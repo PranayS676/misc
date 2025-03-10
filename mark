@@ -107,3 +107,49 @@ def process_dataframe(df, rows_to_delete):
 # df is your DataFrame
 # min_max_df = process_dataframe(df, [0, 1, 2, 3, 4, 5, 6])  
 
+
+-----------------------------
+
+
+
+import pandas as pd
+
+def process_dataframe(df, rows_to_delete):
+    """
+    Processes the input DataFrame by:
+    - Removing specified rows.
+    - Setting the first row after deletion as the header.
+    - Removing duplicates (keeping the last occurrence).
+    - Selecting specific columns.
+    - Computing min and max for grouped data.
+    
+    Args:
+        df (pd.DataFrame): Input DataFrame
+        rows_to_delete (list): List of row indices to delete
+    
+    Returns:
+        pd.DataFrame: Processed DataFrame
+    """
+    # Drop specified rows
+    df = df.drop(rows_to_delete).reset_index(drop=True)
+    
+    # Set new headers
+    new_headers = df.iloc[0].values
+    df = df.iloc[1:].reset_index(drop=True)
+    df.columns = new_headers
+    
+    # Remove duplicate rows, keeping the last occurrence
+    df = df.loc[~df.duplicated(keep='last')]
+    
+    # Select relevant columns
+    df = df[['OLD GRADE', 'CURRENT GRADE', 'ANNUAL']]
+    
+    # Compute min and max values grouped by specific columns
+    min_max_df = df.groupby(['OLD GRADE', 'CURRENT GRADE'])['ANNUAL'].agg(['min', 'max']).reset_index()
+    min_max_df.columns = ['OLD GRADE', 'CURRENT GRADE', 'ANNUAL_MIN', 'ANNUAL_MAX']
+    
+    return min_max_df
+
+# Example usage:
+# processed_df = process_dataframe(input_dataframe, [0, 1, 2, 3, 4, 5, 6])
+
