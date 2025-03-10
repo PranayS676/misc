@@ -43,3 +43,67 @@ def process_dataframe(df, rows_to_delete):
 
 # Example usage:
 # min_max_df = process_dataframe(df, [0, 1, 2, 3, 4, 5, 6])  # Replace df with your actual DataFrame
+
+
+
+
+--------------------------------
+
+
+
+
+import pandas as pd
+
+def process_dataframe(df, rows_to_delete):
+    """
+    Processes a given DataFrame by:
+    1. Removing specified rows.
+    2. Setting a new header row.
+    3. Extracting annual columns.
+    4. Grouping by 'OLD GRADE' and 'CURRENT GRADE' to compute min/max values.
+
+    Parameters:
+    df (pd.DataFrame): The input DataFrame.
+    rows_to_delete (list): List of row indices to delete.
+
+    Returns:
+    pd.DataFrame: Processed DataFrame with min/max annual values.
+    """
+    
+    # Step 1: Remove specified rows
+    df = df.drop(rows_to_delete).reset_index(drop=True)
+    
+    # Step 2: Set new headers from the next available row
+    new_headers = df.iloc[0].tolist()  # Ensure it's a list of column names
+    df = df[1:].reset_index(drop=True)  # Remove the new header row from data
+    df.columns = new_headers  # Assign new column names
+    
+    # Step 3: Find all 'ANNUAL' columns and get the last one
+    annual_columns = [col for col in df.columns if isinstance(col, str) and "ANNUAL" in col.upper()]
+    
+    if not annual_columns:
+        raise ValueError("No 'ANNUAL' columns found in the DataFrame")
+    
+    last_annual_col = annual_columns[-1]  # Select the rightmost 'ANNUAL' column
+
+    # Step 4: Keep only required columns
+    required_cols = ['OLD GRADE', 'CURRENT GRADE', 'STEP', last_annual_col]
+    
+    # Ensure all required columns exist
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing columns in DataFrame: {missing_cols}")
+    
+    df = df[required_cols]
+    df = df.loc[~df.duplicated(keep='last')]  # Remove duplicate rows
+
+    # Step 5: Compute min and max values for the annual column
+    min_max_df = df.groupby(['OLD GRADE', 'CURRENT GRADE'])[last_annual_col].agg(['min', 'max']).reset_index()
+    min_max_df.columns = ['OLD GRADE', 'CURRENT GRADE', 'ANNUAL_MIN', 'ANNUAL_MAX']  # Rename columns
+
+    return min_max_df
+
+# Example usage:
+# df is your DataFrame
+# min_max_df = process_dataframe(df, [0, 1, 2, 3, 4, 5, 6])  
+
