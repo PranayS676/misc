@@ -1,11 +1,27 @@
-pip install chardet
-import chardet
-
-with open("path/to/file.csv", 'rb') as f:
-    rawdata = f.read(100000)  # Read a chunk of the file
-    result = chardet.detect(rawdata)
-    enc = result['encoding']
-    print("Detected encoding:", enc)
-
 import pandas as pd
-df = pd.read_csv("path/to/file.csv", encoding=enc)
+
+# Sample DataFrames
+df1 = pd.DataFrame({
+    'Grade': ['KP-abc', 'MP-def', 'TP-ghi'],
+    'Pay Schedule': ['A', 'B', 'C'],
+    'Other_Column1': [10, 20, 30]
+})
+
+df2 = pd.DataFrame({
+    'Grade': ['KP', 'MP', 'TP'],
+    'Payschdule': ['A', 'B', 'C'],
+    'Other_Column2': [100, 200, 300]
+})
+
+# Extract only the part before the hyphen in df1's Grade
+df1['Grade_Match'] = df1['Grade'].str.split('-').str[0]
+
+# Perform the left join
+merged_df = df1.merge(df2, how='left', left_on=['Grade_Match', 'Pay Schedule'], right_on=['Grade', 'Payschdule'])
+
+# Drop the temporary column and unnecessary duplicate keys
+merged_df.drop(columns=['Grade_Match', 'Payschdule'], inplace=True)
+
+# Display the result
+import ace_tools as tools
+tools.display_dataframe_to_user(name="Merged DataFrame", dataframe=merged_df)
