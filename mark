@@ -3,48 +3,50 @@ import os
 
 def process_excel_folder(folder_path):
     """
-    Process all Excel files in a folder and compile aggregated data from their first sheets.
+    Process all Excel files in a folder using only first 6 columns of first sheets
     
     Args:
-        folder_path (str): Path to the folder containing Excel files
+        folder_path (str): Path to folder containing Excel files
         
     Returns:
-        pd.DataFrame: Aggregated DataFrame with Grade, Min_rate, Max_rate, and Category
+        pd.DataFrame: Aggregated data with Grade, Min_rate, Max_rate, Category
     """
     all_data = []
 
-    # Iterate through all files in the directory
     for filename in os.listdir(folder_path):
         if filename.endswith('.xlsx'):
             file_path = os.path.join(folder_path, filename)
             
-            # Get first sheet name
-            with pd.ExcelFile(file_path) as excel:
-                first_sheet_name = excel.sheet_names[0]
-                
-                # Read first sheet
-                df = pd.read_excel(excel, sheet_name=first_sheet_name)
-                
-                # Process if required columns exist
-                if 'Annual' in df.columns and 'Grade' in df.columns:
-                    # Aggregate annual rates
-                    aggregated = df.groupby('Grade', as_index=False)['Annual'].agg(
-                        Min_rate='min',
-                        Max_rate='max'
+            try:
+                with pd.ExcelFile(file_path) as excel:
+                    first_sheet = excel.sheet_names[0]
+                    
+                    # Read only first 6 columns (0-5 index) to save memory
+                    df = pd.read_excel(
+                        excel,
+                        sheet_name=first_sheet,
+                        usecols=range(6),  # Only read first 6 columns
+                        engine='openpyxl'
                     )
                     
-                    # Add category (sheet name + .xlsx)
-                    aggregated['Category'] = f"{first_sheet_name}.xlsx"
-                    
-                    all_data.append(aggregated)
-                else:
-                    print(f"Skipping {filename} - missing required columns")
+                    # Validate required columns exist in first 6 columns
+                    if {'Grade', 'Annual'}.issubset(df.columns):
+                        # Aggregate min/max rates
+                        agg_df = df.groupby('Grade', as_index=False).agg(
+                            Min_rate=('Annual', 'min'),
+                            Max_rate=('Annual', 'max')
+                        )
+                        agg_df['Category'] = f"{first_sheet}.xlsx"
+                        
+                        all_data.append(agg_df)
+                    else:
+                        print(f"Skipping {filename} - Required columns not in first 6 columns")
+            except Exception as e:
+                print(f"Error processing {filename}: {str(e)}")
+                continue
 
-    # Combine all results
-    final_df = pd.concat(all_data, ignore_index=True)
-    return final_df[['Grade', 'Min_rate', 'Max_rate', 'Category']]
+    return pd.concat(all_data, ignore_index=True)[['Grade', 'Min_rate', 'Max_rate', 'Category']]
 
-# Example usage:
-# folder_path = "/your/folder/path"
-# result_df = process_excel_folder(folder_path)
+# Usage:
+# result_df = process_excel_folder("/your/folder/path")
 # display(result_df)
