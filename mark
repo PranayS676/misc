@@ -1,48 +1,50 @@
-import os
 import pandas as pd
+import os
 
-def read_all_excel_sheets(folder_path):
+def process_excel_folder(folder_path):
     """
-    Reads all Excel files and their sheets from a specified folder.
+    Process all Excel files in a folder and compile aggregated data from their first sheets.
     
     Args:
         folder_path (str): Path to the folder containing Excel files
         
     Returns:
-        dict: A dictionary where keys are tuples of (excel_filename, sheet_name) 
-              and values are the corresponding DataFrames
+        pd.DataFrame: Aggregated DataFrame with Grade, Min_rate, Max_rate, and Category
     """
-    all_dataframes = {}
-    
-    files = os.listdir(folder_path)
-    excel_files = [file for file in files if file.endswith(('.xlsx', '.xls', '.xlsm'))]
-    
-    if not excel_files:
-        print(f"No Excel files found in {folder_path}")
-        return all_dataframes
-    
-    for excel_file in excel_files:
-        file_path = os.path.join(folder_path, excel_file)
-        print(f"Reading file: {excel_file}")
-        
-        try:
-            xls = pd.ExcelFile(file_path)
-            sheet_names = xls.sheet_names
+    all_data = []
+
+    # Iterate through all files in the directory
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.xlsx'):
+            file_path = os.path.join(folder_path, filename)
             
-            for sheet_name in sheet_names:
-                print(f"  - Reading sheet: {sheet_name}")
-                try:
-                    df = xls.parse(sheet_name)  # More efficient
-                    all_dataframes[(excel_file, sheet_name)] = df
-                    print(f"    Rows: {df.shape[0]}, Columns: {df.shape[1]}")
-                except Exception as e:
-                    print(f"    Error reading sheet {sheet_name}: {str(e)}")
-        except Exception as e:
-            print(f"Error reading file {excel_file}: {str(e)}")
-    
-    print(f"\nTotal DataFrames created: {len(all_dataframes)}")
-    return all_dataframes
+            # Get first sheet name
+            with pd.ExcelFile(file_path) as excel:
+                first_sheet_name = excel.sheet_names[0]
+                
+                # Read first sheet
+                df = pd.read_excel(excel, sheet_name=first_sheet_name)
+                
+                # Process if required columns exist
+                if 'Annual' in df.columns and 'Grade' in df.columns:
+                    # Aggregate annual rates
+                    aggregated = df.groupby('Grade', as_index=False)['Annual'].agg(
+                        Min_rate='min',
+                        Max_rate='max'
+                    )
+                    
+                    # Add category (sheet name + .xlsx)
+                    aggregated['Category'] = f"{first_sheet_name}.xlsx"
+                    
+                    all_data.append(aggregated)
+                else:
+                    print(f"Skipping {filename} - missing required columns")
+
+    # Combine all results
+    final_df = pd.concat(all_data, ignore_index=True)
+    return final_df[['Grade', 'Min_rate', 'Max_rate', 'Category']]
 
 # Example usage:
-folder_path_csv2 = "/your/folder/path"  # Define your path here
-dfs = read_all_excel_sheets(folder_path_csv2)
+# folder_path = "/your/folder/path"
+# result_df = process_excel_folder(folder_path)
+# display(result_df)
