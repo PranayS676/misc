@@ -1,27 +1,48 @@
+import os
 import pandas as pd
 
-# Sample DataFrames
-df1 = pd.DataFrame({
-    'Grade': ['KP-abc', 'MP-def', 'TP-ghi'],
-    'Pay Schedule': ['A', 'B', 'C'],
-    'Other_Column1': [10, 20, 30]
-})
+def read_all_excel_sheets(folder_path):
+    """
+    Reads all Excel files and their sheets from a specified folder.
+    
+    Args:
+        folder_path (str): Path to the folder containing Excel files
+        
+    Returns:
+        dict: A dictionary where keys are tuples of (excel_filename, sheet_name) 
+              and values are the corresponding DataFrames
+    """
+    all_dataframes = {}
+    
+    files = os.listdir(folder_path)
+    excel_files = [file for file in files if file.endswith(('.xlsx', '.xls', '.xlsm'))]
+    
+    if not excel_files:
+        print(f"No Excel files found in {folder_path}")
+        return all_dataframes
+    
+    for excel_file in excel_files:
+        file_path = os.path.join(folder_path, excel_file)
+        print(f"Reading file: {excel_file}")
+        
+        try:
+            xls = pd.ExcelFile(file_path)
+            sheet_names = xls.sheet_names
+            
+            for sheet_name in sheet_names:
+                print(f"  - Reading sheet: {sheet_name}")
+                try:
+                    df = xls.parse(sheet_name)  # More efficient
+                    all_dataframes[(excel_file, sheet_name)] = df
+                    print(f"    Rows: {df.shape[0]}, Columns: {df.shape[1]}")
+                except Exception as e:
+                    print(f"    Error reading sheet {sheet_name}: {str(e)}")
+        except Exception as e:
+            print(f"Error reading file {excel_file}: {str(e)}")
+    
+    print(f"\nTotal DataFrames created: {len(all_dataframes)}")
+    return all_dataframes
 
-df2 = pd.DataFrame({
-    'Grade': ['KP', 'MP', 'TP'],
-    'Payschdule': ['A', 'B', 'C'],
-    'Other_Column2': [100, 200, 300]
-})
-
-# Extract only the part before the hyphen in df1's Grade
-df1['Grade_Match'] = df1['Grade'].str.split('-').str[0]
-
-# Perform the left join
-merged_df = df1.merge(df2, how='left', left_on=['Grade_Match', 'Pay Schedule'], right_on=['Grade', 'Payschdule'])
-
-# Drop the temporary column and unnecessary duplicate keys
-merged_df.drop(columns=['Grade_Match', 'Payschdule'], inplace=True)
-
-# Display the result
-import ace_tools as tools
-tools.display_dataframe_to_user(name="Merged DataFrame", dataframe=merged_df)
+# Example usage:
+folder_path_csv2 = "/your/folder/path"  # Define your path here
+dfs = read_all_excel_sheets(folder_path_csv2)
