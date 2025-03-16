@@ -1,55 +1,44 @@
 import pandas as pd
 import os
+import glob
 
-def process_excel_folder(folder_path):
-    """
-    Process Excel files while handling sheets with <6 columns
-    """
-    all_data = []
-
-    for filename in os.listdir(folder_path):
-        if filename.endswith('.xlsx'):
-            file_path = os.path.join(folder_path, filename)
+def process_excel_file(file_path):
+    # Read the first sheet of the Excel file, limiting to the first 14 columns
+    df = pd.read_excel(file_path, sheet_name=0, usecols=range(14))
+    
+    # Initialize a list to store the results
+    results = []
+    
+    # Iterate over the rows to find the 'Annual' rows and corresponding grades
+    for index, row in df.iterrows():
+        if row[1] == 'Annual':
+            grade = df.iloc[index - 2, 0]  # Assuming the grade is two rows above the 'Annual' row
+            min_rate = row[2]  # 1st Step
+            max_rate = row.iloc[-1]  # Last Step within the first 14 columns
             
-            try:
-                with pd.ExcelFile(file_path) as excel:
-                    first_sheet = excel.sheet_names[0]
-                    
-                    # Read first 6 columns dynamically
-                    df = pd.read_excel(
-                        excel,
-                        sheet_name=first_sheet,
-                        usecols=lambda x: x < 6,  # Flexible column handling
-                        engine='openpyxl'
-                    )
-                    
-                    # Check required columns exist in actual columns read
-                    if {'Grade', 'Annual'}.issubset(df.columns):
-                        agg_df = df.groupby('Grade', as_index=False).agg(
-                            Min_rate=('Annual', 'min'),
-                            Max_rate=('Annual', 'max')
-                        )
-                        agg_df['Category'] = filename
-                        all_data.append(agg_df)
-                    else:
-                        print(f"Skipping {filename} - Required columns missing in first {df.shape[1]} columns")
-            except Exception as e:
-                print(f"Error processing {filename}: {str(e)}")
-                continue
+            # Append the result to the list
+            results.append({
+                'Grade': grade,
+                'Min_rate': min_rate,
+                'Max_rate': max_rate,
+                'Category': os.path.basename(file_path)
+            })
+    
+    return results
 
-    return pd.concat(all_data, ignore_index=True)[['Grade', 'Min_rate', 'Max_rate', 'Category']]
+# Directory containing the Excel files
+directory = 'path_to_your_directory'
 
-# Usage:
-# result_df = process_excel_folder("/your/folder/path")
-# display(result_df)
+# List to store all results
+all_results = []
 
+# Iterate over all Excel files in the directory
+for file_path in glob.glob(os.path.join(directory, '*.xlsx')):
+    all_results.extend(process_excel_file(file_path))
 
-1. **Process Excel files** in a folder  
-2. For **each file**:  
-   - Read **first sheet**  
-   - Keep **first 6 columns**  
-   - Find **min/max** of "Annual" per Grade  
-   - Add **filename** as Category  
-3. **Combine results** into final DataFrame  
+# Create a DataFrame from the collected results
+result_df = pd.DataFrame(all_results)
 
-*(Handles varying column counts safely)*
+# Display or save the DataFrame
+print(result_df)
+# result_df.to_csv('output.csv', index=False)  # Uncomment to save the DataFrame to a CSV file
