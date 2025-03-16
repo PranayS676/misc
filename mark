@@ -3,14 +3,7 @@ import os
 
 def process_excel_folder(folder_path):
     """
-    Process all Excel files in a folder using only first 6 columns of first sheets.
-    Category column will now use the file name instead of the sheet name.
-    
-    Args:
-        folder_path (str): Path to folder containing Excel files
-        
-    Returns:
-        pd.DataFrame: Aggregated data with Grade, Min_rate, Max_rate, Category
+    Process Excel files while handling sheets with <6 columns
     """
     all_data = []
 
@@ -22,27 +15,24 @@ def process_excel_folder(folder_path):
                 with pd.ExcelFile(file_path) as excel:
                     first_sheet = excel.sheet_names[0]
                     
-                    # Read only first 6 columns (0-5 index) to save memory
+                    # Read first 6 columns dynamically
                     df = pd.read_excel(
                         excel,
                         sheet_name=first_sheet,
-                        usecols=range(6),  # Only read first 6 columns
+                        usecols=lambda x: x < 6,  # Flexible column handling
                         engine='openpyxl'
                     )
                     
-                    # Validate required columns exist in first 6 columns
+                    # Check required columns exist in actual columns read
                     if {'Grade', 'Annual'}.issubset(df.columns):
-                        # Aggregate min/max rates
                         agg_df = df.groupby('Grade', as_index=False).agg(
                             Min_rate=('Annual', 'min'),
                             Max_rate=('Annual', 'max')
                         )
-                        # Use file name as category instead of sheet name
-                        agg_df['Category'] = filename  # Changed to use file name
-                        
+                        agg_df['Category'] = filename
                         all_data.append(agg_df)
                     else:
-                        print(f"Skipping {filename} - Required columns not in first 6 columns")
+                        print(f"Skipping {filename} - Required columns missing in first {df.shape[1]} columns")
             except Exception as e:
                 print(f"Error processing {filename}: {str(e)}")
                 continue
