@@ -3,18 +3,24 @@ import os
 import glob
 
 def process_excel_file(file_path):
-    # Read the first sheet of the Excel file, limiting to the first 14 columns
-    df = pd.read_excel(file_path, sheet_name=0, usecols=range(14))
+    # Read the first sheet of the Excel file
+    df = pd.read_excel(file_path, sheet_name=0)
     
     # Initialize a list to store the results
     results = []
+    
+    # Determine the number of columns dynamically
+    num_columns = df.shape[1]
+    
+    # Ensure we only process up to the 14th column if it exists
+    max_columns = min(num_columns, 14)
     
     # Iterate over the rows to find the 'Annual' rows and corresponding grades
     for index, row in df.iterrows():
         if row[1] == 'Annual':
             grade = df.iloc[index - 2, 0]  # Assuming the grade is two rows above the 'Annual' row
             min_rate = row[2]  # 1st Step
-            max_rate = row.iloc[-1]  # Last Step within the first 14 columns
+            max_rate = row[max_columns - 1]  # Last Step within the available columns
             
             # Append the result to the list
             results.append({
@@ -27,7 +33,7 @@ def process_excel_file(file_path):
     return results
 
 # Directory containing the Excel files
-directory = 'path_to_your_directory'
+directory = 
 
 # List to store all results
 all_results = []
