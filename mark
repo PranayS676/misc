@@ -3,7 +3,8 @@ import os
 
 def process_excel_folder(folder_path):
     """
-    Process all Excel files in a folder using only first 6 columns of first sheets
+    Process all Excel files in a folder using only first 6 columns of first sheets.
+    Category column will now use the file name instead of the sheet name.
     
     Args:
         folder_path (str): Path to folder containing Excel files
@@ -36,7 +37,8 @@ def process_excel_folder(folder_path):
                             Min_rate=('Annual', 'min'),
                             Max_rate=('Annual', 'max')
                         )
-                        agg_df['Category'] = f"{first_sheet}.xlsx"
+                        # Use file name as category instead of sheet name
+                        agg_df['Category'] = filename  # Changed to use file name
                         
                         all_data.append(agg_df)
                     else:
