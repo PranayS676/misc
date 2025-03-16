@@ -42,3 +42,14 @@ def process_excel_folder(folder_path):
 # Usage:
 # result_df = process_excel_folder("/your/folder/path")
 # display(result_df)
+
+
+1. **Process Excel files** in a folder  
+2. For **each file**:  
+   - Read **first sheet**  
+   - Keep **first 6 columns**  
+   - Find **min/max** of "Annual" per Grade  
+   - Add **filename** as Category  
+3. **Combine results** into final DataFrame  
+
+*(Handles varying column counts safely)*
