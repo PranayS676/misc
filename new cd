@@ -70,3 +70,28 @@ def process_folder(folder_path):
     
     result_df = pd.DataFrame(all_data, columns=['Grade', 'min rate', 'max rate', 'category'])
     return result_df
+
+
+
+-----------
+
+
+"""
+Purpose: Extract salary data from Excel files in a folder and compile into a DataFrame.
+
+Processing Logic:
+1. SEIU 73 Files (e.g. SEIU 73-2.xlsx):
+   - Reads first 14 rows of first sheet
+   - Identifies Grades (e.g. '9', '10', 'RNA')
+   - Extracts min_rate (1st Step Annual) and max_rate (last Step Annual)
+   
+2. Other Files (e.g. SEIU 2020.xlsx):
+   - Reads 'DP1-DP3 2023' sheet
+   - Groups by NEW GRADE to find min/max Annual values
+
+Output Format:
+Grade | min rate | max rate | category (filename)
+
+Note: Assumes "Annual" columns contain numeric values. Non-numeric 
+values will be ignored. Requires pandas and openpyxl/xlrd.
+"""
