@@ -1,50 +1,32 @@
 import pandas as pd
-import os
-import glob
 
-def process_excel_file(file_path):
-    # Read the first sheet of the Excel file
-    df = pd.read_excel(file_path, sheet_name=0)
+def extract_data_from_sheets(excel_path, sheet_names):
+    final_df = pd.DataFrame(columns=["grade", "min_rate", "max_rate", "category"])
     
-    # Initialize a list to store the results
-    results = []
+    for sheet in sheet_names:
+        df = pd.read_excel(excel_path, sheet_name=sheet, header=None)
+        
+        category = df.iloc[0, 0]  # First row, first column contains category
+        
+        data = []
+        current_grade = None
+        for index, row in df.iterrows():
+            if isinstance(row[0], (int, float)) and not pd.isna(row[0]):
+                current_grade = int(row[0])  # Grade number
+            elif row[0] == "Annual":
+                min_rate = min(row[2:].dropna())  # Minimum from step1 to step12
+                max_rate = max(row[2:].dropna())  # Maximum from step1 to step12
+                data.append([current_grade, min_rate, max_rate, category])
+        
+        sheet_df = pd.DataFrame(data, columns=["grade", "min_rate", "max_rate", "category"])
+        final_df = pd.concat([final_df, sheet_df], ignore_index=True)
     
-    # Determine the number of columns dynamically
-    num_columns = df.shape[1]
-    
-    # Ensure we only process up to the 14th column if it exists
-    max_columns = min(num_columns, 14)
-    
-    # Iterate over the rows to find the 'Annual' rows and corresponding grades
-    for index, row in df.iterrows():
-        if row[1] == 'Annual':
-            grade = df.iloc[index - 2, 0]  # Assuming the grade is two rows above the 'Annual' row
-            min_rate = row[2]  # 1st Step
-            max_rate = row[max_columns - 1]  # Last Step within the available columns
-            
-            # Append the result to the list
-            results.append({
-                'Grade': grade,
-                'Min_rate': min_rate,
-                'Max_rate': max_rate,
-                'Category': os.path.basename(file_path)
-            })
-    
-    return results
+    return final_df
 
-# Directory containing the Excel files
-directory = 
+# Example usage
+excel_path = "path/to/your/excel_file.xlsx"
+sheet_names = ["Sheet1", "Sheet2"]  # Provide actual sheet names
 
-# List to store all results
-all_results = []
-
-# Iterate over all Excel files in the directory
-for file_path in glob.glob(os.path.join(directory, '*.xlsx')):
-    all_results.extend(process_excel_file(file_path))
-
-# Create a DataFrame from the collected results
-result_df = pd.DataFrame(all_results)
-
-# Display or save the DataFrame
-print(result_df)
-# result_df.to_csv('output.csv', index=False)  # Uncomment to save the DataFrame to a CSV file
+result_df = extract_data_from_sheets(excel_path, sheet_names)
+import ace_tools as tools
+tools.display_dataframe_to_user("Extracted Data", result_df)
