@@ -1,105 +1,5 @@
 import pandas as pd
-import os
 from pathlib import Path
-
-def clean_number(value):
-    """Converts a value to an integer by removing non-digit characters."""
-    if pd.isna(value):
-        return 0
-    cleaned = ''.join(filter(str.isdigit, str(value)))
-    return int(cleaned) if cleaned else 0
-
-def process_folder(folder_path):
-    all_data = []
-    
-    for file_path in Path(folder_path).glob('*.xlsx'):
-        filename = file_path.name
-        if filename.startswith('SEIU 73'):
-            # Process SEIU 73 files
-            try:
-                df = pd.read_excel(file_path, sheet_name=0, header=None, nrows=14)
-            except Exception as e:
-                continue  # Skip if unable to read
-            rows = df.values.tolist()
-            grade_blocks = []
-            current_block = []
-            
-            for row in rows:
-                if pd.notna(row[0]) and str(row[0]).strip() != '':
-                    if current_block:
-                        grade_blocks.append(current_block)
-                    current_block = [row]
-                else:
-                    if current_block:
-                        current_block.append(row)
-            if current_block:
-                grade_blocks.append(current_block)
-            
-            for block in grade_blocks:
-                if not block:
-                    continue
-                grade_row = block[0]
-                grade = str(grade_row[0]).strip()
-                annual_row = None
-                for row in block[1:]:
-                    if len(row) > 1 and str(row[1]).strip() == 'Annual':
-                        annual_row = row
-                        break
-                if annual_row:
-                    annual_values = annual_row[2:]
-                    cleaned_values = [clean_number(v) for v in annual_values]
-                    if cleaned_values:
-                        min_rate = cleaned_values[0]
-                        max_rate = cleaned_values[-1]
-                        all_data.append({
-                            'Grade': grade,
-                            'min rate': min_rate,
-                            'max rate': max_rate,
-                            'category': filename
-                        })
-        else:
-            # Process other files
-            try:
-                df = pd.read_excel(file_path, sheet_name='DP1-DP3 2023')
-            except ValueError:
-                continue  # Skip if sheet not found
-            except Exception as e:
-                continue
-            
-            if 'NEW GRADE' not in df.columns or 'ANNUAL' not in df.columns:
-                continue  # Skip if required columns missing
-            
-            df['ANNUAL'] = df['ANNUAL'].apply(clean_number)
-            grouped = df.groupby('NEW GRADE')['ANNUAL'].agg(['min', 'max'])
-            for grade, data in grouped.iterrows():
-                all_data.append({
-                    'Grade': grade,
-                    'min rate': data['min'],
-                    'max rate': data['max'],
-                    'category': filename
-                })
-    
-    result_df = pd.DataFrame(all_data, columns=['Grade', 'min rate', 'max rate', 'category'])
-    return result_df
-
-
-
-
----------------
-
-
-
-
-import pandas as pd
-import os
-from pathlib import Path
-
-def clean_number(value):
-    """Converts a value to an integer by removing non-digit characters."""
-    if pd.isna(value):
-        return 0
-    cleaned = ''.join(filter(str.isdigit, str(value)))
-    return int(cleaned) if cleaned else 0
 
 def process_folder(folder_path):
     all_data = []
@@ -113,7 +13,7 @@ def process_folder(folder_path):
                 df = df.fillna('')
                 rows = df.values.tolist()
             except Exception as e:
-                continue  # Skip if unable to read
+                continue
             
             current_grade = None
             annual_data = {}
@@ -122,7 +22,7 @@ def process_folder(folder_path):
                 if len(row) == 0:
                     continue
                 grade_cell = str(row[0]).strip()
-                if grade_cell != '' and grade_cell != 'nan':
+                if grade_cell not in ['', 'nan']:
                     current_grade = grade_cell
                     annual_data[current_grade] = []
                 else:
@@ -130,14 +30,16 @@ def process_folder(folder_path):
                         continue
                     row_type = str(row[1]).strip().lower() if len(row) > 1 else ''
                     if 'annual' in row_type:
-                        annual_values = [clean_number(v) for v in row[2:] if v != '']
+                        annual_values = [v for v in row[2:] if v != '']
+                        annual_values = pd.to_numeric(annual_values, errors='coerce').tolist()
+                        annual_values = [v for v in annual_values if not pd.isna(v)]
                         if annual_values:
                             annual_data[current_grade] = annual_values
             
             for grade, values in annual_data.items():
                 if values:
-                    min_rate = values[0]
-                    max_rate = values[-1]
+                    min_rate = int(values[0])
+                    max_rate = int(values[-1])
                     all_data.append({
                         'Grade': grade,
                         'min rate': min_rate,
@@ -154,15 +56,15 @@ def process_folder(folder_path):
                 continue
             
             if 'NEW GRADE' not in df.columns or 'ANNUAL' not in df.columns:
-                continue  # Skip if required columns missing
+                continue
             
-            df['ANNUAL'] = df['ANNUAL'].apply(clean_number)
+            df['ANNUAL'] = pd.to_numeric(df['ANNUAL'], errors='coerce')
             grouped = df.groupby('NEW GRADE')['ANNUAL'].agg(['min', 'max'])
             for grade, data in grouped.iterrows():
                 all_data.append({
                     'Grade': grade,
-                    'min rate': data['min'],
-                    'max rate': data['max'],
+                    'min rate': int(data['min']),
+                    'max rate': int(data['max']),
                     'category': filename
                 })
     
